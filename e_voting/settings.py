@@ -29,7 +29,7 @@ import dj_database_url
 
 # ...
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost', 'https://voting-system-qyx8.onrender.com').split(',')
 
 # Application definition
 
