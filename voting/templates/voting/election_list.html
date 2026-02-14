@@ -1,0 +1,25 @@
+{% extends 'root.html' %}
+{% block content %}
+<section class="content">
+  <h1 class="page-header text-center title"><b>Select an Election</b></h1>
+<div class="row">
+<div class="col-sm-10 col-sm-offset-1">
+
+<div class="list-group">
+    {% for election in elections %}
+    <a href="{% url 'show_ballot' election.id %}" class="list-group-item">
+        <h4 class="list-group-item-heading">{{ election.title }}</h4>
+        <p class="list-group-item-text">Click to vote in this election</p>
+    </a>
+    {% empty %}
+    <p>No active elections found.</p>
+    {% endfor %}
+</div>
+<div class="text-center" style="margin-top: 20px;">
+    <a href="{% url 'account_login' %}" class="btn btn-default btn-flat"><i class="fa fa-user-secret"></i> Admin Login</a>
+</div>
+
+</div>
+</div>
+</section>
+{% endblock content %}

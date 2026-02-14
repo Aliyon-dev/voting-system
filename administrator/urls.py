@@ -4,6 +4,11 @@ from . import views
 
 urlpatterns = [
     path('', views.dashboard, name="adminDashboard"),
+    path('election/select', views.select_election, name='select_election'),
+    path('election/create', views.create_election, name='create_election'),
+    path('election/deselect', views.deselect_election, name='deselect_election'),
+    path('admins', views.viewAdmins, name='viewAdmins'),
+    path('admins/delete', views.deleteAdmin, name='deleteAdmin'),
     # * Voters
     path('voters', views.voters, name="adminViewVoters"),
     path('voters/view', views.view_voter_by_id, name="viewVoter"),

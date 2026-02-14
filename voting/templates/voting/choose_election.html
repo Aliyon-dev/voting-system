@@ -1,0 +1,31 @@
+{% extends "voting/base.html" %}
+{% block content %}
+
+    <div class="login-box">
+        <div class="login-logo">
+            <b>Select Election</b>
+        </div>
+
+        <div class="login-box-body">
+            <p class="login-box-msg">You are registered for multiple elections. Please choose one.</p>
+            <form action="{% url 'choose_election' %}" method="POST">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Elections</label>
+                    <select class="form-control" name="election_id">
+                        {% for election in elections %}
+                            <option value="{{ election.id }}">{{ election.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="col-xs-12">
+                        <button type="submit" class="btn btn-primary btn-block btn-flat">Proceed to Vote</button>
+                    </div>
+                </div>
+            </form>
+
+        </div>
+    </div>
+ 
+{% endblock content %}

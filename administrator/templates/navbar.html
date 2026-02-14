@@ -20,7 +20,13 @@
         <li class="dropdown user user-menu">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown">
             <img src="{% static 'images/people.png' %}" class="user-image" alt="User Image">
-            <span class="hidden-xs">{{ request.user }}</span>
+            <span class="hidden-xs">
+              {% if request.user.is_authenticated %}
+                {{ request.user }}
+              {% else %}
+                Voter
+              {% endif %}
+            </span>
           </a>
           <ul class="dropdown-menu">
             <!-- User image -->
@@ -28,12 +34,21 @@
               <img src="{% static 'images/people.png' %}" class="img-circle" alt="User Image">
 
               <p>
-                System Administrator                <small>Member since Mar. 2021</small>
+                {% if request.user.is_authenticated %}
+                  System Administrator
+                {% else %}
+                  Voter
+                {% endif %}
               </p>
             </li>
             <li class="user-footer">
               <div class="pull-left">
-                <a href="#profile" data-toggle="modal" class="btn btn-default btn-flat" id="admin_profile">Update</a>
+                {% if request.user.is_authenticated %}
+                  <a href="#profile" data-toggle="modal" class="btn btn-default btn-flat" id="admin_profile">Update</a>
+                  {% if request.session.admin_election_id %}
+                      <a href="{% url 'deselect_election' %}" class="btn btn-warning btn-flat">Switch Election</a>
+                  {% endif %}
+                {% endif %}
               </div>
               <div class="pull-right">
                 <a href="{% url 'account_logout' %}" class="btn btn-default btn-flat">Sign out</a>

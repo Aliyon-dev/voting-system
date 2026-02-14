@@ -3,3 +3,7 @@ mysql-connector-python
 Pillow
 django-renderpdf
 requests
+gunicorn
+whitenoise
+dj-database-url
+psycopg2-binary

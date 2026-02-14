@@ -1,65 +1,51 @@
 from django.shortcuts import render, redirect, reverse
 from .email_backend import EmailBackend
 from django.contrib import messages
-from .forms import CustomUserForm
-from voting.forms import VoterForm
+from voting.models import Voter
 from django.contrib.auth import login, logout
-# Create your views here.
 
+from voting.models import Voter, Election
 
-def account_login(request):
-    if request.user.is_authenticated:
-        if request.user.user_type == '1':
+def admin_login(request):
+    user = request.user
+    if user.is_authenticated:
+        if user.is_superuser or user.user_type == '1':
             return redirect(reverse("adminDashboard"))
         else:
-            return redirect(reverse("voterDashboard"))
-
+            messages.error(request, "Access Denied")
+            
     context = {}
     if request.method == 'POST':
-        user = EmailBackend.authenticate(request, username=request.POST.get(
-            'email'), password=request.POST.get('password'))
-        if user != None:
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        
+        user = EmailBackend.authenticate(request, username=email, password=password)
+        if user:
             login(request, user)
-            if user.user_type == '1':
-                return redirect(reverse("adminDashboard"))
-            else:
-                return redirect(reverse("voterDashboard"))
+            return redirect(reverse("adminDashboard"))
         else:
-            messages.error(request, "Invalid details")
-            return redirect("/")
+            messages.error(request, "Invalid Credentials")
+            
+    return render(request, "voting/admin_login.html", context)
 
-    return render(request, "voting/login.html", context)
+
+def voter_login(request):
+    return redirect(reverse("index")) 
+
+def choose_election(request):
+    return redirect(reverse('index'))
 
 
-def account_register(request):
-    userForm = CustomUserForm(request.POST or None)
-    voterForm = VoterForm(request.POST or None)
-    context = {
-        'form1': userForm,
-        'form2': voterForm
-    }
-    if request.method == 'POST':
-        if userForm.is_valid() and voterForm.is_valid():
-            user = userForm.save(commit=False)
-            voter = voterForm.save(commit=False)
-            voter.admin = user
-            user.save()
-            voter.save()
-            messages.success(request, "Account created. You can login now!")
-            return redirect(reverse('account_login'))
-        else:
-            messages.error(request, "Provided data failed validation")
-            # return account_login(request)
-    return render(request, "voting/reg.html", context)
 
 
 def account_logout(request):
-    user = request.user
-    if user.is_authenticated:
+    # Admin Logout
+    if request.user.is_authenticated:
         logout(request)
-        messages.success(request, "Thank you for visiting us!")
-    else:
-        messages.error(
-            request, "You need to be logged in to perform this action")
+    
+    # Voter Logout
+    if 'voter_id' in request.session:
+        del request.session['voter_id']
 
+    messages.success(request, "Thank you for visiting us!")
     return redirect(reverse("account_login"))

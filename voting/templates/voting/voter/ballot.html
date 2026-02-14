@@ -14,6 +14,21 @@ aria-hidden="true">&times;</button>
 
 <form method="POST" id="ballotForm" action="{% url 'submit_ballot' %}">
   {% csrf_token %}
+  
+  <div class="box box-solid">
+      <div class="box-header with-border">
+          <h3 class="box-title"><b>Voter Identification</b></h3>
+      </div>
+      <div class="box-body">
+          <div class="form-group">
+            <label for="sin" class="control-label">Enter your SIN (Social Insurance Number):</label>
+            <input type="text" class="form-control" id="sin" name="sin" placeholder="Type your SIN here..." required>
+            <p class="help-block">This will be used to record your vote. It is not validated against a database, but you can only vote once per election.</p>
+          </div>
+          <input type="hidden" name="election_id" value="{{ election.id }}">
+      </div>
+  </div>
+
   {{ ballot|safe }}
   <div class="text-center">
     <button type="button" class="btn btn-success btn-flat" id="preview"><i

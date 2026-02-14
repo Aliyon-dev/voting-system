@@ -1,25 +1,25 @@
 from django.shortcuts import render, redirect, reverse
-from account.views import account_login
-from .models import Position, Candidate, Voter, Votes
+from account.views import voter_login, admin_login # Import correct views if needed, or just use redirection by URL name
+from .models import Position, Candidate, Voter, Votes, Election
 from django.http import JsonResponse
 from django.utils.text import slugify
 from django.contrib import messages
 from django.conf import settings
-from django.http import JsonResponse
-import requests
 import json
-# Create your views here.
-
 
 def index(request):
-    if not request.user.is_authenticated:
-        return account_login(request)
-    context = {}
-    # return render(request, "voting/login.html", context)
+    # Retrieve all elections
+    elections = Election.objects.all()
+    if elections.count() == 1:
+        return redirect(reverse('show_ballot', args=[elections.first().id]))
+    else:
+        # If multiple elections, show a list (we'll implement this template later or simple render)
+        # For now, let's just render a simple list or redirect to the first one as a fallback
+        # Ideally, we should have an 'election_list' view.
+        return render(request, "voting/election_list.html", {'elections': elections})
 
-
-def generate_ballot(display_controls=False):
-    positions = Position.objects.order_by('priority').all()
+def generate_ballot(election_id, display_controls=False):
+    positions = Position.objects.filter(election_id=election_id).order_by('priority')
     output = ""
     candidates_data = ""
     num = 1
@@ -84,161 +84,69 @@ def generate_ballot(display_controls=False):
 
 
 def fetch_ballot(request):
-    output = generate_ballot(display_controls=True)
+    # This view seems to be used for admin preview mainly? 
+    # Or voter? If voter, we need voter_id. If admin, we need admin_election_id.
+    # Let's support both.
+    election_id = None
+    if 'voter_id' in request.session:
+        try:
+            voter = Voter.objects.get(id=request.session['voter_id'])
+            election_id = voter.election.id
+        except:
+             pass
+    elif 'admin_election_id' in request.session:
+        election_id = request.session['admin_election_id']
+        
+    if not election_id:
+        return JsonResponse("No election found", safe=False)
+
+    output = generate_ballot(election_id, display_controls=True)
     return JsonResponse(output, safe=False)
 
 
-def generate_otp():
-    """Link to this function
-    https://www.codespeedy.com/otp-generation-using-random-module-in-python/
-    """
-    import random as r
-    otp = ""
-    for i in range(r.randint(5, 8)):
-        otp += str(r.randint(1, 9))
-    return otp
-
-
 def dashboard(request):
-    user = request.user
-    # * Check if this voter has been verified
-    if user.voter.otp is None or user.voter.verified == False:
-        if not settings.SEND_OTP:
-            # Bypass
-            msg = bypass_otp()
-            messages.success(request, msg)
-            return redirect(reverse('show_ballot'))
-        else:
-            return redirect(reverse('voterVerify'))
+    # Check if Admin (Legacy path protection)
+    if request.user.is_authenticated:
+        if request.user.user_type == '1' or request.user.is_superuser:
+             return redirect(reverse("adminDashboard"))
+
+    # Check if Voter
+    voter_id = request.session.get('voter_id')
+    if not voter_id:
+        return redirect(reverse('voter_login'))
+
+    try:
+        voter = Voter.objects.get(id=voter_id)
+    except Voter.DoesNotExist:
+        del request.session['voter_id']
+        return redirect(reverse('voter_login'))
+
+    if voter.voted:
+        # Filter votes by this voter IN THIS ELECTION (filtered by Voter, so implicit)
+        context = {
+            'my_votes': Votes.objects.filter(voter=voter),
+            'election': voter.election
+        }
+        return render(request, "voting/voter/result.html", context)
     else:
-        if user.voter.voted:  # * User has voted
-            # To display election result or candidates I voted for ?
-            context = {
-                'my_votes': Votes.objects.filter(voter=user.voter),
-            }
-            return render(request, "voting/voter/result.html", context)
-        else:
-            return redirect(reverse('show_ballot'))
+        return redirect(reverse('show_ballot', args=[voter.election.id]))
 
 
-def verify(request):
+def show_ballot(request, election_id=None):
+    if not election_id:
+        messages.error(request, "No election specified")
+        return redirect(reverse('index'))
+
+    try:
+        election = Election.objects.get(id=election_id)
+    except Election.DoesNotExist:
+        messages.error(request, "Election not found")
+        return redirect(reverse('index'))
+
+    ballot = generate_ballot(election.id, display_controls=False)
     context = {
-        'page_title': 'OTP Verification'
-    }
-    return render(request, "voting/voter/verify.html", context)
-
-
-def resend_otp(request):
-    """API For SMS
-    I used https://www.multitexter.com/ API to send SMS
-    You might not want to use this or this service might not be available in your Country
-    For quick and easy access, Toggle the SEND_OTP from True to False in settings.py
-    """
-    user = request.user
-    voter = user.voter
-    error = False
-    if settings.SEND_OTP:
-        if voter.otp_sent >= 3:
-            error = True
-            response = "You have requested OTP three times. You cannot do this again! Please enter previously sent OTP"
-        else:
-            phone = voter.phone
-            # Now, check if an OTP has been generated previously for this voter
-            otp = voter.otp
-            if otp is None:
-                # Generate new OTP
-                otp = generate_otp()
-                voter.otp = otp
-                voter.save()
-            try:
-                msg = "Dear " + str(user) + ", kindly use " + \
-                    str(otp) + " as your OTP"
-                message_is_sent = send_sms(phone, msg)
-                if message_is_sent:  # * OTP was sent successfully
-                    # Update how many OTP has been sent to this voter
-                    # Limited to Three so voters don't exhaust OTP balance
-                    voter.otp_sent = voter.otp_sent + 1
-                    voter.save()
-
-                    response = "OTP has been sent to your phone number. Please provide it in the box provided below"
-                else:
-                    error = True
-                    response = "OTP not sent. Please try again"
-            except Exception as e:
-                response = "OTP could not be sent." + str(e)
-
-                # * Send OTP
-    else:
-        #! Update all Voters record and set OTP to 0000
-        #! Bypass OTP verification by updating verified to 1
-        #! Redirect voters to ballot page
-        response = bypass_otp()
-    return JsonResponse({"data": response, "error": error})
-
-
-def bypass_otp():
-    Voter.objects.all().filter(otp=None, verified=False).update(otp="0000", verified=True)
-    response = "Kindly cast your vote"
-    return response
-
-
-def send_sms(phone_number, msg):
-    """Read More
-    https://www.multitexter.com/developers
-    """
-    import requests
-    import os
-    import json
-    response = ""
-    email = os.environ.get('SMS_EMAIL')
-    password = os.environ.get('SMS_PASSWORD')
-    if email is None or password is None:
-        raise Exception("Email/Password cannot be Null")
-    url = "https://app.multitexter.com/v2/app/sms"
-    data = {"email": email, "password": password, "message": msg,
-            "sender_name": "OTP", "recipients": phone_number, "forcednd": 1}
-    headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-    r = requests.post(url, data=json.dumps(data), headers=headers)
-    response = r.json()
-    status = response.get('status', 0)
-    if str(status) == '1':
-        return True
-    else:
-        return False
-
-
-def verify_otp(request):
-    error = True
-    if request.method != 'POST':
-        messages.error(request, "Access Denied")
-    else:
-        otp = request.POST.get('otp')
-        if otp is None:
-            messages.error(request, "Please provide valid OTP")
-        else:
-            # Get User OTP
-            voter = request.user.voter
-            db_otp = voter.otp
-            if db_otp != otp:
-                messages.error(request, "Provided OTP is not valid")
-            else:
-                messages.success(
-                    request, "You are now verified. Please cast your vote")
-                voter.verified = True
-                voter.save()
-                error = False
-    if error:
-        return redirect(reverse('voterVerify'))
-    return redirect(reverse('show_ballot'))
-
-
-def show_ballot(request):
-    if request.user.voter.voted:
-        messages.error(request, "You have voted already")
-        return redirect(reverse('voterDashboard'))
-    ballot = generate_ballot(display_controls=False)
-    context = {
-        'ballot': ballot
+        'ballot': ballot,
+        'election': election
     }
     return render(request, "voting/voter/ballot.html", context)
 
@@ -250,11 +158,21 @@ def preview_vote(request):
     else:
         output = ""
         form = dict(request.POST)
-        # We don't need to loop over CSRF token
         form.pop('csrfmiddlewaretoken', None)
         error = False
         data = []
-        positions = Position.objects.all()
+        
+        # Get Election from POST data
+        election_id = form.get('election_id')
+        if not election_id:
+             return JsonResponse({'error': True, 'list': "Election ID missing"})
+             
+        try:
+             election_id = int(election_id[0]) # form.get returns list
+        except:
+             return JsonResponse({'error': True, 'list': "Invalid Election ID"})
+
+        positions = Position.objects.filter(election_id=election_id)
         for position in positions:
             max_vote = position.max_vote
             pos = slugify(position.name)
@@ -269,14 +187,11 @@ def preview_vote(request):
                     response = "You can only choose " + \
                         str(max_vote) + " candidates for " + position.name
                 else:
-                    # for key, value in form.items():
                     start_tag = f"""
                        <div class='row votelist' style='padding-bottom: 2px'>
 		                      	<span class='col-sm-4'><span class='pull-right'><b>{position.name} :</b></span></span>
 		                      	<span class='col-sm-8'>
                                 <ul style='list-style-type:none; margin-left:-40px'>
-                                
-                    
                     """
                     end_tag = "</ul></span></div><hr/>"
                     data = ""
@@ -296,7 +211,6 @@ def preview_vote(request):
                 form_position = form.get(this_key)
                 if form_position is None:
                     continue
-                # Max Vote == 1
                 try:
                     form_position = form_position[0]
                     candidate = Candidate.objects.get(
@@ -321,24 +235,57 @@ def preview_vote(request):
 def submit_ballot(request):
     if request.method != 'POST':
         messages.error(request, "Please, browse the system properly")
-        return redirect(reverse('show_ballot'))
-
-    # Verify if the voter has voted or not
-    voter = request.user.voter
-    if voter.voted:
-        messages.error(request, "You have voted already")
-        return redirect(reverse('voterDashboard'))
+        return redirect(reverse('index'))
 
     form = dict(request.POST)
-    form.pop('csrfmiddlewaretoken', None)  # Pop CSRF Token
-    form.pop('submit_vote', None)  # Pop Submit Button
+    form.pop('csrfmiddlewaretoken', None)
+    form.pop('submit_vote', None)
+    
+    # Retrieve SIN and Election ID
+    sin = form.pop('sin', None)
+    election_id = form.pop('election_id', None)
+    
+    if not sin:
+        messages.error(request, "Please enter your SIN")
+        # How to redirect back to ballot with election_id? 
+        # We need election_id to redirect.
+        if election_id:
+             return redirect(reverse('show_ballot', args=[election_id[0]]))
+        return redirect(reverse('index'))
+    else:
+        sin = sin[0] # List, so take first
+        
+    if not election_id:
+        messages.error(request, "Election ID missing")
+        return redirect(reverse('index'))
+    else:
+        election_id = election_id[0]
 
-    # Ensure at least one vote is selected
+    # Verify Logic
+    try:
+        election = Election.objects.get(id=election_id)
+    except Election.DoesNotExist:
+        messages.error(request, "Invalid Election")
+        return redirect(reverse('index'))
+        
+    # Check if voter exists
+    voter, created = Voter.objects.get_or_create(sin=sin, election=election)
+    
+    if voter.voted:
+        messages.error(request, "You have voted already")
+        # Redirect to a success page or back to index?
+        # Maybe show a dedicated 'already voted' page or valid message on ballot.
+        # But if we go back to ballot, SIN is empty again. 
+        # For now, back to ballot with error.
+        return redirect(reverse('show_ballot', args=[election_id]))
+
     if len(form.keys()) < 1:
         messages.error(request, "Please select at least one candidate")
-        return redirect(reverse('show_ballot'))
-    positions = Position.objects.all()
+        return redirect(reverse('show_ballot', args=[election_id]))
+    
+    positions = Position.objects.filter(election_id=election.id)
     form_count = 0
+    
     for position in positions:
         max_vote = position.max_vote
         pos = slugify(position.name)
@@ -351,7 +298,7 @@ def submit_ballot(request):
             if len(form_position) > max_vote:
                 messages.error(request, "You can only choose " +
                                str(max_vote) + " candidates for " + position.name)
-                return redirect(reverse('show_ballot'))
+                return redirect(reverse('show_ballot', args=[election_id]))
             else:
                 for form_candidate_id in form_position:
                     form_count += 1
@@ -366,13 +313,12 @@ def submit_ballot(request):
                     except Exception as e:
                         messages.error(
                             request, "Please, browse the system properly " + str(e))
-                        return redirect(reverse('show_ballot'))
+                        return redirect(reverse('show_ballot', args=[election_id]))
         else:
             this_key = pos
             form_position = form.get(this_key)
             if form_position is None:
                 continue
-            # Max Vote == 1
             form_count += 1
             try:
                 form_position = form_position[0]
@@ -386,18 +332,17 @@ def submit_ballot(request):
             except Exception as e:
                 messages.error(
                     request, "Please, browse the system properly " + str(e))
-                return redirect(reverse('show_ballot'))
-    # Count total number of records inserted
-    # Check it viz-a-viz form_count
+                return redirect(reverse('show_ballot', args=[election_id]))
+    
     inserted_votes = Votes.objects.filter(voter=voter)
     if (inserted_votes.count() != form_count):
-        # Delete
         inserted_votes.delete()
         messages.error(request, "Please try voting again!")
-        return redirect(reverse('show_ballot'))
+        return redirect(reverse('show_ballot', args=[election_id]))
     else:
-        # Update Voter profile to voted
         voter.voted = True
         voter.save()
         messages.success(request, "Thanks for voting")
-        return redirect(reverse('voterDashboard'))
+        # Where to redirect after voting? 
+        # Maybe to a 'thank you' page or index.
+        return redirect(reverse('index'))

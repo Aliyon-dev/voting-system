@@ -3,25 +3,41 @@ from account.models import CustomUser
 # Create your models here.
 
 
-class Voter(models.Model):
-    admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    phone = models.CharField(max_length=11, unique=True)  # Used for OTP
-    otp = models.CharField(max_length=10, null=True)
-    verified = models.BooleanField(default=False)
-    voted = models.BooleanField(default=False)
-    otp_sent = models.IntegerField(default=0)  # Control how many OTPs are sent
+class Election(models.Model):
+    title = models.CharField(max_length=100)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.admin.last_name + ", " + self.admin.first_name
+        return self.title
+
+
+class Voter(models.Model):
+    election = models.ForeignKey(Election, on_delete=models.CASCADE)
+    sin = models.CharField(max_length=20)
+    voted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('sin', 'election')
+
+    def __str__(self):
+        return f"{self.sin} - {self.election.title}"
 
 
 class Position(models.Model):
-    name = models.CharField(max_length=50, unique=True)
+    election = models.ForeignKey(Election, on_delete=models.CASCADE)
+    name = models.CharField(max_length=50) # Removed unique=True to allow same position name in diff elections
     max_vote = models.IntegerField()
     priority = models.IntegerField()
 
+    class Meta:
+        unique_together = ('name', 'election')
+
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.election.title})"
 
 
 class Candidate(models.Model):

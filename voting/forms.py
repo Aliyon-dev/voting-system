@@ -6,7 +6,7 @@ from account.forms import FormSettings
 class VoterForm(FormSettings):
     class Meta:
         model = Voter
-        fields = ['phone']
+        fields = ['sin']
 
 
 class PositionForm(FormSettings):

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: e-voting
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn e_voting.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: ALLOWED_HOSTS
+        value: .onrender.com
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: 4

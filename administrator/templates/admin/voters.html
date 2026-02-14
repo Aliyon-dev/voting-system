@@ -6,25 +6,27 @@
 <div class="box">
 <div class="box-header with-border">
   <a href="#addnew" data-toggle="modal" class="btn btn-primary btn-sm btn-flat"><i
-          class="fa fa-plus"></i> New</a>
+          class="fa fa-plus"></i> New SIN</a>
 </div>
 <div class="box-body">
   <table id="example1" class="table table-bordered">
       <thead>
-          <th>Lastname</th>
-          <th>Firstname</th>
-          <th>Email</th>
-          <th>Phone</th>
+          <th>SIN</th>
+          <th>Status</th>
           <th>Action</th>
       </thead>
       <tbody>
     {% for voter in voters %}
       
     <tr>
-      <td>{{ voter.admin.last_name }}</td>
-      <td>{{ voter.admin.first_name }}</td>
-      <td>{{ voter.admin.email }}</td>
-      <td>{{ voter.phone }}</td>
+      <td>{{ voter.sin }}</td>
+      <td>
+        {% if voter.voted %}
+        <span class="label label-success">Voted</span>
+        {% else %}
+        <span class="label label-danger">Not Voted</span>
+        {% endif %}
+      </td>
       
       <td>
         <button class='btn btn-success btn-sm edit btn-flat' data-id='{{ voter.id }}'><i class='fa fa-edit'></i> Edit</button>
@@ -50,35 +52,23 @@
           <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                 <span aria-hidden="true">&times;</span></button>
-            <h4 class="modal-title"><b>Add New Voter</b></h4>
+            <h4 class="modal-title"><b>Add New SIN</b></h4>
           </div>
           <div class="modal-body">
             <form class="form-horizontal" method="POST" action="{% url 'adminViewVoters' %}">
               {% csrf_token %}
+              <div class="form-group">
+                  <label for="sin" class="col-sm-3 control-label">SIN Number</label>
 
-             
-              <div class="modal-body">
-                  {% for field in form1  %}
-                  <div class="form-group has-feedback">
-                      <span class="text-danger">{{field.errors}}</span>
-                      {{field.label_tag}}
-                      {{field}}
+                  <div class="col-sm-9">
+                    <input type="text" class="form-control" id="sin" name="sin" required>
                   </div>
-                  {% endfor %}
-
-                  {% for field in form2  %}
-                  <div class="form-group has-feedback">
-                      <span class="text-danger">{{field.errors}}</span>
-                      {{field.label_tag}}
-                      {{field}}
-                  </div>
-                  {% endfor %}
-
+              </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default btn-flat pull-left" data-dismiss="modal"><i class="fa fa-close"></i> Close</button>
             <button type="submit" class="btn btn-primary btn-flat" name="add"><i class="fa fa-save"></i> Save</button>
-          </div></form></div></div></div></div>
+          </div></form></div></div></div>
 
 <!-- Edit -->
 <div class="modal fade" id="edit">
@@ -87,42 +77,19 @@
           <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                 <span aria-hidden="true">&times;</span></button>
-            <h4 class="modal-title"><b>Edit Voter</b></h4>
+            <h4 class="modal-title"><b>Edit SIN</b></h4>
           </div>
           <div class="modal-body">
             <form class="form-horizontal" method="POST" action="{% url 'updateVoter' %}">
               {% csrf_token %}
               <input type="hidden" class="id" name="id">
               <div class="form-group">
-                  <label for="edit_firstname" class="col-sm-3 control-label">Firstname</label>
+                  <label for="edit_sin" class="col-sm-3 control-label">SIN Number</label>
 
                   <div class="col-sm-9">
-                    <input type="text" class="form-control" id="edit_firstname" name="first_name">
+                    <input type="text" class="form-control" id="edit_sin" name="sin" required>
                   </div>
               </div>
-              <div class="form-group">
-                  <label for="edit_lastname" class="col-sm-3 control-label">Lastname</label>
-
-                  <div class="col-sm-9">
-                    <input type="text" class="form-control" id="edit_lastname" name="last_name">
-                  </div>
-              </div>
-              <div class="form-group">
-                <label for="edit_email" class="col-sm-3 control-label">Email</label>
-
-                <div class="col-sm-9">
-                  <input type="email" class="form-control" id="edit_email" name="email">
-                </div>
-            </div>
-            <div class="form-group">
-              <label for="edit_phone" class="col-sm-3 control-label">Phone</label>
-
-              <div class="col-sm-9">
-                <input type="text" class="form-control" id="edit_phone" name="phone">
-              </div>
-          </div> 
-
-
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default btn-flat pull-left" data-dismiss="modal"><i class="fa fa-close"></i> Close</button>
@@ -147,7 +114,7 @@
               <input type="hidden" class="id" name="id">
               {% csrf_token %}
               <div class="text-center">
-                  <p>DELETE VOTER</p>
+                  <p>DELETE SIN</p>
                   <h2 class="bold fullname"></h2>
               </div>
           </div>
@@ -194,12 +161,10 @@
           },
           dataType: 'json',
           success: function(response) {
+            console.log(response);
               $('.id').val(response.id);
-              $('#edit_firstname').val(response.first_name);
-              $('#edit_lastname').val(response.last_name);
-              $('#edit_phone').val(response.phone);
-              $('#edit_email').val(response.email);
-              $('.fullname').html(response.first_name + ' ' + response.last_name);
+              $('#edit_sin').val(response.sin);
+              $('.fullname').html(response.sin);
           }
       });
   }
