@@ -97,12 +97,14 @@ DATABASES = {
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# Change this part in your settings.py
 STORAGES = {
     "default": {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        # Use CompressedStaticFilesStorage instead of CompressedManifestStaticFilesStorage
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
 
