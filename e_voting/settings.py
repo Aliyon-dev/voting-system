@@ -25,7 +25,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', '%6lp_p!%r$7t-2ql5hc5(r@)8u_fc+6@ugxcn
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-DEBUG =  False
+DEBUG =  True
 
 
 import dj_database_url
