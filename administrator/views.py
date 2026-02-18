@@ -1,4 +1,5 @@
 from django.shortcuts import render, reverse, redirect
+from django.core.paginator import Paginator
 from voting.models import Voter, Position, Candidate, Votes, Election
 from account.models import CustomUser
 from voting.forms import *
@@ -74,9 +75,16 @@ def voters(request):
         messages.error(request, "Please select an election first")
         return redirect(reverse('adminDashboard'))
         
-    voters = Voter.objects.filter(election_id=election_id)
+    # 1. Fetch the queryset (Still lazy here)
+    voter_list = Voter.objects.filter(election_id=election_id).order_by('id')
+    
+    # 2. Setup Pagination (50 voters per page)
+    paginator = Paginator(voter_list, 50) 
+    page_number = request.GET.get('page')
+    voters = paginator.get_page(page_number)
+
     context = {
-        'voters': voters,
+        'voters': voters, # Now only 50 objects at a time
         'page_title': 'Voters List'
     }
     if request.method == 'POST':
