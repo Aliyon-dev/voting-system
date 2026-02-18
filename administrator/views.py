@@ -339,7 +339,7 @@ def viewVotes(request):
     election_id = request.session.get('admin_election_id')
     if not election_id:
         return redirect(reverse('adminDashboard'))
-    votes = Votes.objects.filter(position__election_id=election_id)
+    votes = Votes.objects.filter(position__election_id=election_id).select_related('voter', 'candidate', 'position')
     context = {
         'votes': votes,
         'page_title': 'Votes'
