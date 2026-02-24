@@ -7,6 +7,7 @@ urlpatterns = [
     path('election/select', views.select_election, name='select_election'),
     path('election/create', views.create_election, name='create_election'),
     path('election/deselect', views.deselect_election, name='deselect_election'),
+    path('election/toggle_status', views.toggle_election_status, name='toggle_election_status'),
     path('admins', views.viewAdmins, name='viewAdmins'),
     path('admins/delete', views.deleteAdmin, name='deleteAdmin'),
     # * Voters
