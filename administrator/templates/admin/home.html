@@ -33,6 +33,45 @@
           </div>
         </div>
         <!-- ./col -->
+      </div>
+      
+      <!-- Election Controls -->
+      <div class="row">
+        <div class="col-xs-12">
+          <div class="box {% if election.is_open %}box-primary{% else %}box-danger{% endif %}">
+            <div class="box-header with-border">
+              <h3 class="box-title">Election Status: 
+                {% if election.is_open %}
+                  <span class="label label-success">Open</span>
+                {% else %}
+                  <span class="label label-danger">Closed</span>
+                {% endif %}
+              </h3>
+              <div class="pull-right">
+                <form action="{% url 'toggle_election_status' %}" method="POST" style="display:inline;">
+                  {% csrf_token %}
+                  {% if election.is_open %}
+                    <button type="submit" class="btn btn-danger btn-sm btn-flat"><i class="fa fa-close"></i> End Election</button>
+                  {% else %}
+                    <button type="submit" class="btn btn-success btn-sm btn-flat"><i class="fa fa-check"></i> Re-open Election</button>
+                  {% endif %}
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+            <div class="inner">
+              <h3>{{ candidate_count }}</h3>          
+              <p>No. of Candidates</p>
+            </div>
+            <div class="icon">
+              <i class="fa fa-black-tie"></i>
+            </div>
+            <a href="{% url 'viewCandidates' %}" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+          </div>
+        </div>
+        <!-- ./col -->
         <div class="col-lg-3 col-xs-6">
           <!-- small box -->
           <div class="small-box bg-yellow">

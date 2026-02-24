@@ -144,12 +144,8 @@ def show_ballot(request, election_id=None):
         messages.error(request, "Election not found")
         return redirect(reverse('index'))
 
-    now = timezone.now()
-    if election.start_date and now < election.start_date:
-        messages.error(request, "Election has not started yet.")
-        return redirect(reverse('index'))
-    if election.end_date and now > election.end_date:
-        messages.error(request, "Election has ended.")
+    if not election.is_open:
+        messages.error(request, "This election is closed.")
         return redirect(reverse('index'))
 
     ballot = generate_ballot(election.id, display_controls=False)
@@ -277,12 +273,8 @@ def submit_ballot(request):
         messages.error(request, "Invalid Election")
         return redirect(reverse('index'))
         
-    now = timezone.now()
-    if election.start_date and now < election.start_date:
-        messages.error(request, "Election has not started yet.")
-        return redirect(reverse('index'))
-    if election.end_date and now > election.end_date:
-        messages.error(request, "Election has ended.")
+    if not election.is_open:
+        messages.error(request, "This election is closed.")
         return redirect(reverse('index'))
 
     # Check if voter exists

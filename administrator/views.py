@@ -317,8 +317,6 @@ def ballot_title(request):
     try:
         redirect_url = resolve(url)
         title = request.POST.get('title', 'No Name')
-        start_date = request.POST.get('start_date') or None
-        end_date = request.POST.get('end_date') or None
         require_registered_voters = request.POST.get('require_registered_voters') == 'on'
         
         # Now we should update Election title, not a file
@@ -326,8 +324,6 @@ def ballot_title(request):
         if election_id:
             election = Election.objects.get(id=election_id)
             election.title = title
-            election.start_date = start_date
-            election.end_date = end_date
             election.require_registered_voters = require_registered_voters
             election.save()
             messages.success(request, "Election details updated")
@@ -389,16 +385,12 @@ def create_election(request):
 
     if request.method == 'POST':
         title = request.POST.get('title')
-        start_date = request.POST.get('start_date') or None
-        end_date = request.POST.get('end_date') or None
         require_registered_voters = request.POST.get('require_registered_voters') == 'on'
 
         if title:
             Election.objects.create(
                 title=title, 
                 created_by=request.user,
-                start_date=start_date,
-                end_date=end_date,
                 require_registered_voters=require_registered_voters
             )
             messages.success(request, "Election Created")
@@ -411,6 +403,27 @@ def create_election(request):
 def deselect_election(request):
     if 'admin_election_id' in request.session:
         del request.session['admin_election_id']
+    return redirect(reverse('adminDashboard'))
+
+@login_required
+def toggle_election_status(request):
+    if request.user.user_type != '1' and not request.user.is_superuser:
+        messages.error(request, "Access Denied")
+        return redirect(reverse('voterDashboard'))
+        
+    election_id = request.session.get('admin_election_id')
+    if not election_id:
+        return redirect(reverse('adminDashboard'))
+        
+    try:
+        election = Election.objects.get(id=election_id)
+        election.is_open = not election.is_open
+        election.save()
+        status = "opened" if election.is_open else "closed"
+        messages.success(request, f"Election has been {status}")
+    except Election.DoesNotExist:
+        messages.error(request, "Election not found")
+        
     return redirect(reverse('adminDashboard'))
 
 
