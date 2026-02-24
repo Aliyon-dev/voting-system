@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.utils.text import slugify
 from django.contrib import messages
 from django.conf import settings
+from django.utils import timezone
 import json
 
 def index(request):
@@ -143,6 +144,14 @@ def show_ballot(request, election_id=None):
         messages.error(request, "Election not found")
         return redirect(reverse('index'))
 
+    now = timezone.now()
+    if election.start_date and now < election.start_date:
+        messages.error(request, "Election has not started yet.")
+        return redirect(reverse('index'))
+    if election.end_date and now > election.end_date:
+        messages.error(request, "Election has ended.")
+        return redirect(reverse('index'))
+
     ballot = generate_ballot(election.id, display_controls=False)
     context = {
         'ballot': ballot,
@@ -268,8 +277,22 @@ def submit_ballot(request):
         messages.error(request, "Invalid Election")
         return redirect(reverse('index'))
         
+    now = timezone.now()
+    if election.start_date and now < election.start_date:
+        messages.error(request, "Election has not started yet.")
+        return redirect(reverse('index'))
+    if election.end_date and now > election.end_date:
+        messages.error(request, "Election has ended.")
+        return redirect(reverse('index'))
+
     # Check if voter exists
-    voter, created = Voter.objects.get_or_create(sin=sin, election=election)
+    if election.require_registered_voters:
+        voter = Voter.objects.filter(sin=sin, election=election).first()
+        if not voter:
+            messages.error(request, "SIN not registered for this election")
+            return redirect(reverse('show_ballot', args=[election_id]))
+    else:
+        voter, created = Voter.objects.get_or_create(sin=sin, election=election)
     
     if voter.voted:
         messages.error(request, "You have voted already")

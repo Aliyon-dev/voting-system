@@ -317,14 +317,20 @@ def ballot_title(request):
     try:
         redirect_url = resolve(url)
         title = request.POST.get('title', 'No Name')
+        start_date = request.POST.get('start_date') or None
+        end_date = request.POST.get('end_date') or None
+        require_registered_voters = request.POST.get('require_registered_voters') == 'on'
         
         # Now we should update Election title, not a file
         election_id = request.session.get('admin_election_id')
         if election_id:
             election = Election.objects.get(id=election_id)
             election.title = title
+            election.start_date = start_date
+            election.end_date = end_date
+            election.require_registered_voters = require_registered_voters
             election.save()
-            messages.success(request, "Election title updated")
+            messages.success(request, "Election details updated")
         else:
             messages.error(request, "No election selected")
             
@@ -383,8 +389,18 @@ def create_election(request):
 
     if request.method == 'POST':
         title = request.POST.get('title')
+        start_date = request.POST.get('start_date') or None
+        end_date = request.POST.get('end_date') or None
+        require_registered_voters = request.POST.get('require_registered_voters') == 'on'
+
         if title:
-            Election.objects.create(title=title, created_by=request.user)
+            Election.objects.create(
+                title=title, 
+                created_by=request.user,
+                start_date=start_date,
+                end_date=end_date,
+                require_registered_voters=require_registered_voters
+            )
             messages.success(request, "Election Created")
         else:
             messages.error(request, "Title required")
